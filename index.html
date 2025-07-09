@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>HRMS Chat with Chat List</title>
+<style>
+  /* Reset */
+  * {
+    box-sizing: border-box;
+  }
+  body, html {
+    margin: 0; padding: 0; height: 100%;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #F9FAFC;
+    color: #222;
+  }
+
+  /* Layout */
+  .app {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    background: #5850EC;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    padding: 20px 0;
+    position: relative;
+    transition: width 0.3s ease;
+    width: 220px;
+  }
+  .sidebar.collapsed {
+    width: 60px;
+  }
+
+  .logo {
+    margin-left: 20px;
+    margin-bottom: 40px;
+  }
+  .logo img {
+    width: 140px;
+    display: block;
+  }
+  .sidebar.collapsed .logo img {
+    width: 40px;
+    margin-left: 10px;
+  }
+
+  /* Sidebar toggle button */
+  .sidebar-toggle {
+    cursor: pointer;
+    font-size: 1.6rem;
+    user-select: none;
+    margin-left: 20px;
+    margin-bottom: 30px;
+    transition: margin-left 0.3s ease;
+    color: white;
+  }
+  .sidebar.collapsed .sidebar-toggle {
+    margin-left: 10px;
+  }
+
+  /* Sidebar menu container */
+  .sidebar-menu {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    gap: 12px;
+  }
+
+  .sidebar-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    height: 60px;
+    padding: 0 20px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 1rem;
+    white-space: nowrap;
+    user-select: none;
+    border-radius: 8px;
+    transition: background 0.3s ease;
+    position: relative;
+  }
+  .sidebar-menu-item:hover {
+    background: rgba(255 255 255 / 0.15);
+  }
+  .sidebar-menu-item .icon {
+    font-size: 1.4rem;
+    width: 24px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .sidebar.collapsed .sidebar-menu-item span {
+    display: none;
+  }
+
+  /* Selected highlight background */
+  .sidebar-menu-item.selected {
+    background: white;
+    color: #5850EC;
+    font-weight: 700;
+  }
+
+  /* Sliding white indicator bar */
+  .slide-indicator {
+    position: absolute;
+    left: 0;
+    width: 6px;
+    height: 60px;
+    background: white;
+    border-radius: 4px;
+    transition: top 0.3s ease;
+    top: 0;
+  }
+
+  /* Main content */
+  .main-content {
+    flex-grow: 1;
+    background: white;
+    padding: 30px 40px;
+    display: flex;
+    flex-direction: row;
+    overflow: hidden;
+  }
+
+  /* Chat list (left panel inside chat) */
+  .chat-list {
+    width: 280px;
+    border-right: 1px solid #eaeaea;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .chat-list-header {
+    font-weight: 700;
+    font-size: 1.1rem;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #eaeaea;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .chat-list-header .dot {
+    width: 16px;
+    height: 16px;
+    background: #28a745;
+    border-radius: 50%;
+  }
+
+  .chat-requests {
+    background: #f1eaff;
+    padding: 10px 14px;
+    margin: 12px 16px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  .chat-requests .icon {
+    background: #6b4fff;
+    color: white;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+  .chat-requests .avatars {
+    display: flex;
+    gap: 5px;
+  }
+  .chat-requests .avatars img {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+  .chat-requests .text {
+    color: #555;
+  }
+
+  .chat-item {
+    padding: 12px 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border-radius: 8px;
+    transition: background-color 0.2s ease;
+  }
+  .chat-item:hover {
+    background: #f7f7f7;
+  }
+  .chat-item.selected {
+    background: #ddd;
+  }
+
+  .chat-item .avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #c4c4c4;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 22px;
+    color: #555;
+    flex-shrink: 0;
+  }
+
+  .chat-item .details {
+    flex-grow: 1;
+  }
+  .chat-item .details .name {
+    font-weight: 600;
+    font-size: 1rem;
+  }
+  .chat-item .details .last-message {
+    font-size: 0.85rem;
+    color: #666;
+  }
+  .chat-item .details .last-message span {
+    font-weight: 700;
+  }
+  .chat-item .time {
+    font-size: 0.75rem;
+    color: #999;
+    white-space: nowrap;
+  }
+  .chat-item .unread-dot {
+    background: #28a745;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-left: 6px;
+  }
+
+  /* Chat messages container (right side) */
+  .chat-messages-wrapper {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    max-width: 720px;
+    margin-left: 40px;
+  }
+
+  .chat-messages {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding-bottom: 20px;
+  }
+
+  /* Messages */
+  .message {
+    max-width: 380px;
+    padding: 14px 18px;
+    border-radius: 10px;
+    margin-bottom: 14px;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    word-wrap: break-word;
+  }
+  .message.sent {
+    background: #5850EC;
+    color: white;
+    margin-left: auto;
+    border-bottom-right-radius: 2px;
+  }
+  .message.received {
+    background: #EEE;
+    color: #222;
+    margin-right: auto;
+    border-bottom-left-radius: 2px;
+  }
+
+  /* Input section */
+  .chat-input-area {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: auto;
+  }
+  .attach-btn {
+    background: #5850EC;
+    border: none;
+    color: white;
+    font-size: 1.6rem;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .attach-btn:hover {
+    background: #4340B8;
+  }
+  .chat-input {
+    flex-grow: 1;
+    border: 1.5px solid #ddd;
+    border-radius: 22px;
+    padding: 10px 20px;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s ease;
+  }
+  .chat-input:focus {
+    border-color: #5850EC;
+  }
+  .send-btn {
+    background: #5850EC;
+    border: none;
+    color: white;
+    font-size: 1.4rem;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: background 0.2s ease;
+  }
+  .send-btn:hover {
+    background: #4340B8;
+  }
+
+  /* Scrollbar for chat */
+  .chat-messages::-webkit-scrollbar {
+    width: 6px;
+  }
+  .chat-messages::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 3px;
+  }
+  .profile-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px 20px 20px;
+  border-bottom: 1px solid rgba(255 255 255 / 0.2);
+  margin-bottom: 30px;
+}
+
+.profile-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 2px solid white;
+}
+
+.profile-info {
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.profile-name {
+  font-weight: 700;
+  font-size: 1.1rem;
+  line-height: 1.2;
+}
+
+.profile-role {
+  font-size: 0.85rem;
+  opacity: 0.7;
+  margin-top: 2px;
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <nav class="sidebar" id="sidebar">
+   <!-- Logo -->
+    <div class="logo">
+      <img src="./Logo_with_white_Background.png" alt="HRMS Logo" />
+    </div>
+
+    <!-- Profile card below logo -->
+    <div class="profile-card">
+      <img src="./images.jpeg" alt="Maria" class="profile-avatar" />
+      <div class="profile-info">
+        <div class="profile-name">HR NAME</div>
+        <div class="profile-role">HR Manager</div>
+      </div>
+    </div>
+
+    <!-- Sidebar toggle button -->
+    <div class="sidebar-toggle" id="toggleSidebar" title="Toggle Sidebar">☰</div>
+
+    <!-- Sidebar menu container -->
+    <div class="sidebar-menu" id="sidebarMenu"></div>
+
+  </nav>
+
+  <!-- Main content -->
+  <main class="main-content" id="mainContent">
+    <!-- Chat list on left inside chat page -->
+    <div class="chat-list" id="chatList">
+      <div class="chat-list-header">
+        <div class="dot"></div>
+        <div>Chat List</div>
+      </div>
+      <div class="chat-requests">
+        <div class="icon">+</div>
+        <div class="avatars">
+          <img src="https://randomuser.me/api/portraits/women/30.jpg" alt="User 1" />
+          <img src="https://randomuser.me/api/portraits/men/31.jpg" alt="User 2" />
+          <img src="https://randomuser.me/api/portraits/women/32.jpg" alt="User 3" />
+        </div>
+        <div class="text">Requests (3)</div>
+      </div>
+
+      <!-- Chat items will be appended here dynamically -->
+      <div id="chatItems"></div>
+    </div>
+
+    <!-- Chat messages and input -->
+    <div class="chat-messages-wrapper">
+      <div class="chat-messages" id="chatMessages"></div>
+      <div class="chat-input-area">
+        <button class="attach-btn" title="Attach File">📎</button>
+        <input type="text" id="chatInput" class="chat-input" placeholder="Type your message..." />
+        <button class="send-btn" id="sendBtn" title="Send">➡️</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  // Sidebar menu items data
+  const sidebarItems = [
+    { label: "Dashboard", icon: "🏠" },
+    { label: "Messages", icon: "💬" },
+    { label: "Teams", icon: "👥" },
+    { label: "Settings", icon: "⚙️" }
+  ];
+
+  const sidebarMenu = document.getElementById("sidebarMenu");
+  const sidebar = document.getElementById("sidebar");
+  const toggleSidebarBtn = document.getElementById("toggleSidebar");
+
+  // Render sidebar menu with sliding indicator bar
+  function renderSidebarMenu() {
+    sidebarMenu.innerHTML = "";
+    sidebarItems.forEach((item, i) => {
+      const div = document.createElement("div");
+      div.classList.add("sidebar-menu-item");
+      if (i === 0) div.classList.add("selected");
+      div.setAttribute("data-index", i);
+      div.innerHTML = `
+        <div class="icon">${item.icon}</div>
+        <span>${item.label}</span>
+      `;
+      sidebarMenu.appendChild(div);
+    });
+
+    // Create and append sliding indicator bar
+    const indicator = document.createElement("div");
+    indicator.classList.add("slide-indicator");
+    sidebarMenu.appendChild(indicator);
+    updateIndicatorPosition(0);
+
+    // Add click events for menu items
+    sidebarMenu.querySelectorAll(".sidebar-menu-item").forEach(item => {
+      item.addEventListener("click", e => {
+        const index = +item.getAttribute("data-index");
+        selectSidebarItem(index);
+      });
+    });
+  }
+
+  // Update slide indicator bar position
+  function updateIndicatorPosition(index) {
+    const items = sidebarMenu.querySelectorAll(".sidebar-menu-item");
+    const indicator = sidebarMenu.querySelector(".slide-indicator");
+    if (!items.length || !indicator) return;
+
+    const targetItem = items[index];
+    if (!targetItem) return;
+
+    const top = targetItem.offsetTop;
+    indicator.style.top = top + "px";
+
+    // Also update selection styles
+    items.forEach((item, i) => {
+      item.classList.toggle("selected", i === index);
+    });
+  }
+
+  // Select sidebar menu item
+  function selectSidebarItem(index) {
+    updateIndicatorPosition(index);
+    // You can add further logic here, e.g., load the corresponding content
+  }
+
+  // Toggle sidebar collapse
+  toggleSidebarBtn.addEventListener("click", () => {
+    sidebar.classList.toggle("collapsed");
+  });
+
+  // Initialize sidebar menu
+  renderSidebarMenu();
+
+  // Chat list data
+  const chats = [
+    {
+      id: 1,
+      name: "Vishal",
+      avatar: "https://randomuser.me/api/portraits/women/45.jpg",
+      lastMessage: "Hi, can you check the report?",
+      lastMessageBold: "Hi",
+      time: "12:25 PM",
+      unread: true,
+      messages: [
+        { text: "Hi, can you check the report?", sender: "received" },
+        { text: "Sure, I will look into it.", sender: "sent" },
+      ],
+    },
+    {
+      id: 2,
+      name: "sharma",
+      avatar: "https://randomuser.me/api/portraits/men/44.jpg",
+      lastMessage: "Let's meet tomorrow.",
+      lastMessageBold: "Let's",
+      time: "10:15 AM",
+      unread: false,
+      messages: [
+        { text: "Let's meet tomorrow.", sender: "received" },
+        { text: "Okay, what time?", sender: "sent" },
+      ],
+    },
+    {
+      id: 3,
+      name: "HR",
+      avatar: "https://randomuser.me/api/portraits/men/55.jpg",
+      lastMessage: "Thanks for the update!",
+      lastMessageBold: "Thanks",
+      time: "Yesterday",
+      unread: true,
+      messages: [
+        { text: "Thanks for the update!", sender: "received" },
+      ],
+    },
+  ];
+
+  const chatItemsContainer = document.getElementById("chatItems");
+  const chatMessagesContainer = document.getElementById("chatMessages");
+  const chatInput = document.getElementById("chatInput");
+  const sendBtn = document.getElementById("sendBtn");
+
+  let selectedChatId = null;
+
+  // Render chat list items
+  function renderChatList() {
+    chatItemsContainer.innerHTML = "";
+    chats.forEach(chat => {
+      const div = document.createElement("div");
+      div.classList.add("chat-item");
+      if (chat.id === selectedChatId) {
+        div.classList.add("selected");
+      }
+      div.setAttribute("data-id", chat.id);
+
+      div.innerHTML = `
+        <img src="${chat.avatar}" alt="${chat.name}" class="avatar" />
+        <div class="details">
+          <div class="name">${chat.name}</div>
+          <div class="last-message">
+            <span>${chat.lastMessageBold}</span>${chat.lastMessage.slice(chat.lastMessageBold.length)}
+          </div>
+        </div>
+        <div class="time">${chat.time}${chat.unread ? '<span class="unread-dot"></span>' : ''}</div>
+      `;
+
+      div.addEventListener("click", () => {
+        selectChat(chat.id);
+      });
+
+      chatItemsContainer.appendChild(div);
+    });
+  }
+
+  // Render messages for selected chat
+  function renderMessages(chatId) {
+    chatMessagesContainer.innerHTML = "";
+    const chat = chats.find(c => c.id === chatId);
+    if (!chat) return;
+
+    chat.messages.forEach(msg => {
+      const div = document.createElement("div");
+      div.classList.add("message");
+      div.classList.add(msg.sender === "sent" ? "sent" : "received");
+      div.textContent = msg.text;
+      chatMessagesContainer.appendChild(div);
+    });
+
+    // Scroll to bottom
+    chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+  }
+
+  // Select chat in chat list
+  function selectChat(chatId) {
+    selectedChatId = chatId;
+    renderChatList();
+    renderMessages(chatId);
+  }
+
+  // Send message handler
+  function sendMessage() {
+    const msg = chatInput.value.trim();
+    if (!msg || !selectedChatId) return;
+
+    const chat = chats.find(c => c.id === selectedChatId);
+    chat.messages.push({ text: msg, sender: "sent" });
+    chat.lastMessage = msg;
+    chat.lastMessageBold = msg.split(' ')[0];
+    chat.time = "Now";
+    chat.unread = false;
+
+    chatInput.value = "";
+    renderChatList();
+    renderMessages(selectedChatId);
+  }
+
+  sendBtn.addEventListener("click", sendMessage);
+  chatInput.addEventListener("keypress", e => {
+    if (e.key === "Enter") {
+      sendMessage();
+    }
+  });
+
+  // Select first chat by default
+  selectChat(chats[0].id);
+</script>
+</body>
+</html>
